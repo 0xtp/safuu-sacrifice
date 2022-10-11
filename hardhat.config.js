@@ -16,7 +16,7 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  const PRIVATE_KEY = '';
  
  module.exports = {
-   solidity: "0.8.10",
+   solidity: "0.8.17",
    //networks:{
    //  rinkeby:{
    //    url: INFURA_URL,

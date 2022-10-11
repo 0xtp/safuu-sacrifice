@@ -15,6 +15,7 @@ contract SafuuXSacrifice is Ownable, ReentrancyGuard {
 
     address payable public wallet1;
     address payable public wallet2;
+    bool public isSacrificeActive = false;
 
     struct sacrifice {
         uint256 id;
@@ -31,8 +32,12 @@ contract SafuuXSacrifice is Ownable, ReentrancyGuard {
     mapping(address => uint256) public ETHDeposit;
     mapping(address => mapping(address => uint256)) public ERC20Deposit;
 
-    event ETHDeposited(address accountAddress, uint256 amount);
-    event ERC20Deposited(string symbol, address accountAddress, uint256 amount);
+    event ETHDeposited(address indexed accountAddress, uint256 indexed amount);
+    event ERC20Deposited(
+        string indexed symbol,
+        address indexed accountAddress,
+        uint256 indexed amount
+    );
 
     constructor(address payable _wallet1, address payable _wallet2) {
         wallet1 = _wallet1;
@@ -40,6 +45,8 @@ contract SafuuXSacrifice is Ownable, ReentrancyGuard {
     }
 
     function depositETH() external payable nonReentrant {
+        require(isSacrificeActive == true, "depositETH: Sacrifice not active");
+        require(msg.value > 0, "depositETH: Amount must be greater than ZERO");
         nextSacrificeId.increment();
         sacrifice storage newSacrifice = Sacrifice[nextSacrificeId.current()];
         newSacrifice.id = nextSacrificeId.current();
@@ -61,8 +68,12 @@ contract SafuuXSacrifice is Ownable, ReentrancyGuard {
         nonReentrant
     {
         require(
+            isSacrificeActive == true,
+            "depositERC20: Sacrifice not active"
+        );
+        require(
             AllowedTokens[_symbol] != address(0),
-            "Address not part of allowed token list"
+            "depositERC20: Address not part of allowed token list"
         );
         nextSacrificeId.increment();
         sacrifice storage newSacrifice = Sacrifice[nextSacrificeId.current()];
@@ -87,6 +98,10 @@ contract SafuuXSacrifice is Ownable, ReentrancyGuard {
         onlyOwner
     {
         AllowedTokens[_symbol] = _tokenAddress;
+    }
+
+    function setSacrificeStatus(bool _isActive) external {
+        isSacrificeActive = _isActive;
     }
 
     function recoverETH() external onlyOwner {
