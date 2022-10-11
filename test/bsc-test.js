@@ -8,6 +8,14 @@ describe("Deploy Tokens", function () {
     this.wallet1 = this.accounts[1];
     this.wallet2 = this.accounts[2];
 
+    const SafuuToken = await ethers.getContractFactory("SafuuToken");
+    this.safuuToken = await SafuuToken.deploy();
+    await this.safuuToken.deployed();
+
+    const ETHToken = await ethers.getContractFactory("ERC20Token");
+    this.ethToken = await ETHToken.deploy("ETH", "ETH");
+    await this.ethToken.deployed();
+
     const USDCToken = await ethers.getContractFactory("ERC20Token");
     this.usdcToken = await USDCToken.deploy("USDC", "USDC");
     await this.usdcToken.deployed();
@@ -24,12 +32,18 @@ describe("Deploy Tokens", function () {
     this.wbtcToken = await WBTCToken.deploy("WBTC", "WBTC");
     await this.wbtcToken.deployed();
 
-    const SafuuXETH = await ethers.getContractFactory("SafuuXSacrificeETH");
-    this.safuuXETH = await SafuuXETH.deploy(this.wallet1.address, this.wallet2.address);
-    await this.safuuXETH.deployed();
+    const SafuuXBSC = await ethers.getContractFactory("SafuuXSacrificeBSC");
+    this.safuuXBSC = await SafuuXBSC.deploy(this.wallet1.address, this.wallet2.address);
+    await this.safuuXBSC.deployed();
   });
 
   it("Should check properties match constructor", async function() {
+    expect(await this.safuuToken.name()).to.equal("Safuu");
+    expect(await this.safuuToken.symbol()).to.equal("SAFUU");
+
+    expect(await this.ethToken.name()).to.equal("ETH");
+    expect(await this.ethToken.symbol()).to.equal("ETH");
+
     expect(await this.usdcToken.name()).to.equal("USDC");
     expect(await this.usdcToken.symbol()).to.equal("USDC");
 
@@ -44,41 +58,44 @@ describe("Deploy Tokens", function () {
   });
 
   it("Should set Sacrifice active", async function () {
-    expect(await this.safuuXETH.isSacrificeActive()).to.equal(false);
-    const saleStatus = await this.safuuXETH.setSacrificeStatus(true);
-    expect(await this.safuuXETH.isSacrificeActive()).to.equal(true);
+    expect(await this.safuuXBSC.isSacrificeActive()).to.equal(false);
+    const saleStatus = await this.safuuXBSC.setSacrificeStatus(true);
+    expect(await this.safuuXBSC.isSacrificeActive()).to.equal(true);
   });
 
   it("Should set Allowed Tokens", async function () {
-    await this.safuuXETH.setAllowedTokens("USDC", this.usdcToken.address);
-    expect(await this.safuuXETH.AllowedTokens("USDC")).to.equal(this.usdcToken.address);
+    await this.safuuXBSC.setAllowedTokens("ETH", this.ethToken.address);
+    expect(await this.safuuXBSC.AllowedTokens("ETH")).to.equal(this.ethToken.address);
 
-    await this.safuuXETH.setAllowedTokens("USDT", this.usdtToken.address);
-    expect(await this.safuuXETH.AllowedTokens("USDT")).to.equal(this.usdtToken.address);
+    await this.safuuXBSC.setAllowedTokens("USDC", this.usdcToken.address);
+    expect(await this.safuuXBSC.AllowedTokens("USDC")).to.equal(this.usdcToken.address);
 
-    await this.safuuXETH.setAllowedTokens("WBTC", this.wbtcToken.address);
-    expect(await this.safuuXETH.AllowedTokens("WBTC")).to.equal(this.wbtcToken.address);
+    await this.safuuXBSC.setAllowedTokens("USDT", this.usdtToken.address);
+    expect(await this.safuuXBSC.AllowedTokens("USDT")).to.equal(this.usdtToken.address);
+
+    await this.safuuXBSC.setAllowedTokens("WBTC", this.wbtcToken.address);
+    expect(await this.safuuXBSC.AllowedTokens("WBTC")).to.equal(this.wbtcToken.address);
   });
 
-  it("Should deposit 20 ETH into Wallet 1", async function() {
+  it("Should deposit 20 BNB into Wallet 1", async function() {
     const balBefore = await ethers.provider.getBalance(this.wallet1.address);
-    console.log("ETH Before", balBefore);
-    await this.safuuXETH.depositETH({
+    console.log("BNB Before", balBefore);
+    await this.safuuXBSC.depositBNB({
       value: ethers.utils.parseEther("20")
     });
     const balAfter = await ethers.provider.getBalance(this.wallet1.address);
-    console.log("ETH After", balAfter);
+    console.log("BNB After", balAfter);
     expect(Number(balAfter)).to.greaterThan(Number(balBefore));
   });
 
   it("Should approve USDC tokens", async function() {
-    await this.usdcToken.approve(this.safuuXETH.address, 1000000000);
+    await this.usdcToken.approve(this.safuuXBSC.address, 1000000000);
   });
 
-  it("Should deposit 2000 USDC into Wallet 1", async function() {
+  it("Should deposit 5000 USDC into Wallet 1", async function() {
     const balBefore = await this.usdcToken.balanceOf(this.wallet1.address);
     console.log("USDC Before", balBefore);
-    await this.safuuXETH.depositERC20("USDC", 2000);
+    await this.safuuXBSC.depositBEP20("USDC", 5000);
     const balAfter = await this.usdcToken.balanceOf(this.wallet1.address);
     console.log("USDC After", balAfter);
     expect(Number(balAfter)).to.greaterThan(Number(balBefore));

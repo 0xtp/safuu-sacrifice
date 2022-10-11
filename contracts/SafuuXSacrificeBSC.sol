@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
+contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
     Counters.Counter private nextSacrificeId;
 
@@ -29,11 +29,11 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
 
     mapping(uint256 => sacrifice) public Sacrifice;
     mapping(string => address) public AllowedTokens;
-    mapping(address => uint256) public ETHDeposit;
-    mapping(address => mapping(address => uint256)) public ERC20Deposit;
+    mapping(address => uint256) public BNBDeposit;
+    mapping(address => mapping(address => uint256)) public BEP20Deposit;
 
-    event ETHDeposited(address indexed accountAddress, uint256 indexed amount);
-    event ERC20Deposited(
+    event BNBDeposited(address indexed accountAddress, uint256 indexed amount);
+    event BEP20Deposited(
         string indexed symbol,
         address indexed accountAddress,
         uint256 indexed amount
@@ -44,13 +44,13 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         wallet2 = _wallet2;
     }
 
-    function depositETH() external payable nonReentrant {
-        require(isSacrificeActive == true, "depositETH: Sacrifice not active");
-        require(msg.value > 0, "depositETH: Amount must be greater than ZERO");
+    function depositBNB() external payable nonReentrant {
+        require(isSacrificeActive == true, "depositBNB: Sacrifice not active");
+        require(msg.value > 0, "depositBNB: Amount must be greater than ZERO");
 
         nextSacrificeId.increment();
         _createNewSacrifice(
-            "ETH",
+            "BNB",
             msg.sender,
             msg.value,
             0, //Replaced with ChainLink price feed
@@ -58,23 +58,23 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             0 //Replaced with real data
         );
 
-        ETHDeposit[msg.sender] += msg.value;
+        BNBDeposit[msg.sender] += msg.value;
         wallet1.transfer(msg.value); //Payment split comes here
 
-        emit ETHDeposited(msg.sender, msg.value);
+        emit BNBDeposited(msg.sender, msg.value);
     }
 
-    function depositERC20(string memory _symbol, uint256 _amount)
+    function depositBEP20(string memory _symbol, uint256 _amount)
         external
         nonReentrant
     {
         require(
             isSacrificeActive == true,
-            "depositERC20: Sacrifice not active"
+            "depositBEP20: Sacrifice not active"
         );
         require(
             AllowedTokens[_symbol] != address(0),
-            "depositERC20: Address not part of allowed token list"
+            "depositBEP20: Address not part of allowed token list"
         );
 
         nextSacrificeId.increment();
@@ -87,12 +87,12 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             0 //Replaced with real data
         );
         address tokenAddress = AllowedTokens[_symbol];
-        ERC20Deposit[msg.sender][tokenAddress] += _amount;
+        BEP20Deposit[msg.sender][tokenAddress] += _amount;
 
         IERC20 token = IERC20(tokenAddress);
         token.transferFrom(msg.sender, wallet1, _amount); //Payment split comes here
 
-        emit ERC20Deposited(_symbol, msg.sender, _amount);
+        emit BEP20Deposited(_symbol, msg.sender, _amount);
     }
 
     function _createNewSacrifice(
@@ -124,11 +124,11 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         isSacrificeActive = _isActive;
     }
 
-    function recoverETH() external onlyOwner {
+    function recoverBNB() external onlyOwner {
         require(payable(msg.sender).send(address(this).balance));
     }
 
-    function recoverERC20(IERC20 tokenContract, address to) external onlyOwner {
+    function recoverBEP20(IERC20 tokenContract, address to) external onlyOwner {
         tokenContract.transfer(to, tokenContract.balanceOf(address(this)));
     }
 
