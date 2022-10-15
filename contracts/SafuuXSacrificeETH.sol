@@ -13,8 +13,8 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
     Counters.Counter private nextSacrificeId;
 
-    address payable public wallet1;
-    address payable public wallet2;
+    address payable public safuuWallet;
+    address payable public serviceWallet;
     bool public isSacrificeActive = false;
 
     struct sacrifice {
@@ -39,15 +39,16 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         uint256 indexed amount
     );
 
-    constructor(address payable _wallet1, address payable _wallet2) {
-        wallet1 = _wallet1;
-        wallet2 = _wallet2;
+    constructor(address payable _safuuWallet, address payable _serviceWallet) {
+        safuuWallet = _safuuWallet;
+        serviceWallet = _serviceWallet;
     }
 
     function depositETH() external payable nonReentrant {
         require(isSacrificeActive == true, "depositETH: Sacrifice not active");
         require(msg.value > 0, "depositETH: Amount must be greater than ZERO");
 
+        ETHDeposit[msg.sender] += msg.value;
         nextSacrificeId.increment();
         _createNewSacrifice(
             "ETH",
@@ -58,9 +59,11 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             0 //Replaced with real data
         );
 
-        ETHDeposit[msg.sender] += msg.value;
-        wallet1.transfer(msg.value); //Payment split comes here
+        uint256 safuuSplit = (msg.value * 998) / 1000;
+        uint256 serviceSplit = (msg.value * 2) / 1000;
 
+        safuuWallet.transfer(safuuSplit);
+        serviceWallet.transfer(serviceSplit);
         emit ETHDeposited(msg.sender, msg.value);
     }
 
@@ -89,8 +92,12 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         address tokenAddress = AllowedTokens[_symbol];
         ERC20Deposit[msg.sender][tokenAddress] += _amount;
 
+        uint256 safuuSplit = (_amount * 998) / 1000;
+        uint256 serviceSplit = (_amount * 2) / 1000;
+
         IERC20 token = IERC20(tokenAddress);
-        token.transferFrom(msg.sender, wallet1, _amount); //Payment split comes here
+        token.transferFrom(msg.sender, safuuWallet, safuuSplit);
+        token.transferFrom(msg.sender, serviceWallet, serviceSplit);
 
         emit ERC20Deposited(_symbol, msg.sender, _amount);
     }
@@ -132,14 +139,21 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         tokenContract.transfer(to, tokenContract.balanceOf(address(this)));
     }
 
-    // function getChainLinkPrice(address contractAddress) public view returns (int) {
-    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(contractAddress);
+    // function getChainLinkPrice(address contractAddress)
+    //     public
+    //     view
+    //     returns (int256)
+    // {
+    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(
+    //         contractAddress
+    //     );
     //     (
-    //         /*uint80 roundID*/,
-    //         int price,
-    //         /*uint startedAt*/,
-    //         /*uint timeStamp*/,
-    //         /*uint80 answeredInRound*/
+    //         ,
+    //         /*uint80 roundID*/
+    //         int256 price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+    //         ,
+    //         ,
+
     //     ) = priceFeed.latestRoundData();
     //     return price;
     // }

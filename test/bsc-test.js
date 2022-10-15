@@ -1,12 +1,12 @@
-const { expect } = require("chai");
+const { expect, util } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("Deploy Tokens", function () {
   before(async function() {
     this.accounts = await ethers.getSigners();
     this.owner = this.accounts[0];
-    this.wallet1 = this.accounts[1];
-    this.wallet2 = this.accounts[2];
+    this.safuuWallet = this.accounts[1];
+    this.serviceWallet = this.accounts[2];
 
     const SafuuToken = await ethers.getContractFactory("SafuuToken");
     this.safuuToken = await SafuuToken.deploy();
@@ -33,7 +33,7 @@ describe("Deploy Tokens", function () {
     await this.wbtcToken.deployed();
 
     const SafuuXBSC = await ethers.getContractFactory("SafuuXSacrificeBSC");
-    this.safuuXBSC = await SafuuXBSC.deploy(this.wallet1.address, this.wallet2.address);
+    this.safuuXBSC = await SafuuXBSC.deploy(this.safuuWallet.address, this.serviceWallet.address);
     await this.safuuXBSC.deployed();
   });
 
@@ -57,13 +57,20 @@ describe("Deploy Tokens", function () {
     expect(await this.wbtcToken.symbol()).to.equal("WBTC");
   });
 
-  it("Should set Sacrifice active", async function () {
+  it("Should set Sacrifice and Bonus active", async function () {
     expect(await this.safuuXBSC.isSacrificeActive()).to.equal(false);
     const saleStatus = await this.safuuXBSC.setSacrificeStatus(true);
     expect(await this.safuuXBSC.isSacrificeActive()).to.equal(true);
+
+    expect(await this.safuuXBSC.isBonusActive()).to.equal(false);
+    await this.safuuXBSC.activateBonus();
+    expect(await this.safuuXBSC.isBonusActive()).to.equal(true);
   });
 
   it("Should set Allowed Tokens", async function () {
+    await this.safuuXBSC.setAllowedTokens("SAFUU", this.safuuToken.address);
+    expect(await this.safuuXBSC.AllowedTokens("SAFUU")).to.equal(this.safuuToken.address);
+
     await this.safuuXBSC.setAllowedTokens("ETH", this.ethToken.address);
     expect(await this.safuuXBSC.AllowedTokens("ETH")).to.equal(this.ethToken.address);
 
@@ -78,26 +85,39 @@ describe("Deploy Tokens", function () {
   });
 
   it("Should deposit 20 BNB into Wallet 1", async function() {
-    const balBefore = await ethers.provider.getBalance(this.wallet1.address);
+    const balBefore = await ethers.provider.getBalance(this.safuuWallet.address);
     console.log("BNB Before", balBefore);
     await this.safuuXBSC.depositBNB({
       value: ethers.utils.parseEther("20")
     });
-    const balAfter = await ethers.provider.getBalance(this.wallet1.address);
+    const balAfter = await ethers.provider.getBalance(this.safuuWallet.address);
     console.log("BNB After", balAfter);
     expect(Number(balAfter)).to.greaterThan(Number(balBefore));
   });
 
   it("Should approve USDC tokens", async function() {
-    await this.usdcToken.approve(this.safuuXBSC.address, 1000000000);
+    await this.usdcToken.approve(this.safuuXBSC.address, ethers.utils.parseUnits("50000000", 18));
   });
 
   it("Should deposit 5000 USDC into Wallet 1", async function() {
-    const balBefore = await this.usdcToken.balanceOf(this.wallet1.address);
+    const balBefore = await this.usdcToken.balanceOf(this.safuuWallet.address);
     console.log("USDC Before", balBefore);
     await this.safuuXBSC.depositBEP20("USDC", 5000);
-    const balAfter = await this.usdcToken.balanceOf(this.wallet1.address);
+    const balAfter = await this.usdcToken.balanceOf(this.safuuWallet.address);
     console.log("USDC After", balAfter);
+    expect(Number(balAfter)).to.greaterThan(Number(balBefore));
+  });
+
+  it("Should approve SAFUU tokens", async function() {
+    await this.safuuToken.approve(this.safuuXBSC.address, ethers.utils.parseUnits("50000000", 5));
+  });
+
+  it("Should deposit 5000 SAFUU into Wallet 1", async function() {
+    const balBefore = await this.safuuToken.balanceOf(this.safuuWallet.address);
+    console.log("safuuToken Before", balBefore);
+    await this.safuuXBSC.depositSafuu(5000);
+    const balAfter = await this.safuuToken.balanceOf(this.safuuWallet.address);
+    console.log("safuuToken After", balAfter);
     expect(Number(balAfter)).to.greaterThan(Number(balBefore));
   });
 });
