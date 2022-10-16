@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-// import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
@@ -59,7 +59,9 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         require(isSacrificeActive == true, "depositBNB: Sacrifice not active");
         require(msg.value > 0, "depositBNB: Amount must be greater than ZERO");
 
-        uint256 tokenPriceUSD = getChainLinkPrice(AllowedTokens["BNB"]);
+        BNBDeposit[msg.sender] += msg.value;
+        uint256 priceFeed = getChainLinkPrice(AllowedTokens["BNB"]);
+        uint256 tokenPriceUSD = priceFeed / 1e8;
         nextSacrificeId.increment();
         _createNewSacrifice(
             "BNB",
@@ -73,8 +75,6 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
 
         uint256 safuuSplit = (msg.value * 998) / 1000;
         uint256 serviceSplit = (msg.value * 2) / 1000;
-
-        BNBDeposit[msg.sender] += msg.value;
         safuuWallet.transfer(safuuSplit);
         serviceWallet.transfer(serviceSplit);
 
@@ -100,7 +100,8 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         require(_amount > 0, "depositBEP20: Amount must be greater than ZERO");
 
         uint256 amount = _amount * 1e18;
-        uint256 tokenPriceUSD = getChainLinkPrice(AllowedTokens[_symbol]);
+        uint256 priceFeed = getChainLinkPrice(AllowedTokens[_symbol]);
+        uint256 tokenPriceUSD = priceFeed / 1e8;
         address tokenAddress = AllowedTokens[_symbol];
         BEP20Deposit[msg.sender][tokenAddress] += amount;
 
@@ -136,7 +137,8 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         );
         require(_amount > 0, "depositSafuu: Amount must be greater than ZERO");
         uint256 amount = _amount * 1e5;
-        uint256 tokenPriceUSD = getChainLinkPrice(AllowedTokens["SAFUU"]);
+        uint256 tokenPriceUSD = 0;
+        //uint256 tokenPriceUSD = getChainLinkPrice(AllowedTokens["SAFUU"]);
         address tokenAddress = AllowedTokens["SAFUU"];
         BEP20Deposit[msg.sender][tokenAddress] += amount;
 
@@ -201,6 +203,17 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         isSacrificeActive = _isActive;
     }
 
+    function setSafuuWallet(address payable _safuuWallet) external onlyOwner {
+        safuuWallet = _safuuWallet;
+    }
+
+    function setServiceWallet(address payable _serviceWallet)
+        external
+        onlyOwner
+    {
+        serviceWallet = _serviceWallet;
+    }
+
     function recoverBNB() external onlyOwner {
         require(payable(msg.sender).send(address(this).balance));
     }
@@ -214,23 +227,26 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         view
         returns (uint256)
     {
-        return 1000;
+        return 100000000000;
     }
 
-    // function _getChainLinkPrice(address contractAddress)
+    // function getChainLinkPrice(address contractAddress)
     //     public
     //     view
-    //     returns (int256)
+    //     returns (uint256)
     // {
-    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(contractAddress);
+    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(
+    //         contractAddress
+    //     );
     //     (
-    //         /*uint80 roundID*/,
-    //         int price,
-    //         /*uint startedAt*/,
-    //         /*uint timeStamp*/,
-    //         /*uint80 answeredInRound*/
+    //         ,
+    //         /*uint80 roundID*/
+    //         int256 price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+    //         ,
+    //         ,
+
     //     ) = priceFeed.latestRoundData();
-    //     return price;
+    //     return uint256(price);
     // }
 
     function updateBonus(uint256 _day, uint256 _percentage) external onlyOwner {

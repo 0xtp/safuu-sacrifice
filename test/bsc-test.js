@@ -84,7 +84,7 @@ describe("Deploy Tokens", function () {
     expect(await this.safuuXBSC.AllowedTokens("WBTC")).to.equal(this.wbtcToken.address);
   });
 
-  it("Should deposit 20 BNB into Wallet 1", async function() {
+  it("Should deposit 20 BNB", async function() {
     const balBefore = await ethers.provider.getBalance(this.safuuWallet.address);
     console.log("BNB Before", balBefore);
     await this.safuuXBSC.depositBNB({
@@ -99,7 +99,7 @@ describe("Deploy Tokens", function () {
     await this.usdcToken.approve(this.safuuXBSC.address, ethers.utils.parseUnits("50000000", 18));
   });
 
-  it("Should deposit 5000 USDC into Wallet 1", async function() {
+  it("Should deposit 5000 USDC", async function() {
     const balBefore = await this.usdcToken.balanceOf(this.safuuWallet.address);
     console.log("USDC Before", balBefore);
     await this.safuuXBSC.depositBEP20("USDC", 5000);
@@ -112,7 +112,7 @@ describe("Deploy Tokens", function () {
     await this.safuuToken.approve(this.safuuXBSC.address, ethers.utils.parseUnits("50000000", 5));
   });
 
-  it("Should deposit 5000 SAFUU into Wallet 1", async function() {
+  it("Should deposit 5000 SAFUU", async function() {
     const balBefore = await this.safuuToken.balanceOf(this.safuuWallet.address);
     console.log("safuuToken Before", balBefore);
     await this.safuuXBSC.depositSafuu(5000);
