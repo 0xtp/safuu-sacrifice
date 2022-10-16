@@ -32,8 +32,8 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
 
     mapping(uint256 => sacrifice) public Sacrifice;
     mapping(string => address) public AllowedTokens;
-    mapping(uint256 => string) sacrificeStatus;
-    mapping(uint256 => uint256) bonusPercentage;
+    mapping(uint256 => string) public sacrificeStatus;
+    mapping(uint256 => uint256) public bonusPercentage;
     mapping(address => uint256) public BNBDeposit;
     mapping(address => mapping(address => uint256)) public BEP20Deposit;
 
@@ -220,6 +220,10 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
 
     function recoverBEP20(IERC20 tokenContract, address to) external onlyOwner {
         tokenContract.transfer(to, tokenContract.balanceOf(address(this)));
+    }
+
+    function getCurrentSacrificeID() external view returns (uint256) {
+        return nextSacrificeId.current();
     }
 
     function getChainLinkPrice(address contractAddress)
