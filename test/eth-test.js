@@ -36,6 +36,22 @@ describe("Deploy Tokens", function () {
     expect(await this.busdToken.symbol()).to.equal("BUSD");
   });
 
+  it("Should set Allowed Tokens", async function () {
+    await this.safuuXETH.setAllowedTokens("USDC", this.usdcToken.address);
+    expect(await this.safuuXETH.AllowedTokens("USDC")).to.equal(this.usdcToken.address);
+
+    await this.safuuXETH.setAllowedTokens("USDT", this.usdtToken.address);
+    expect(await this.safuuXETH.AllowedTokens("USDT")).to.equal(this.usdtToken.address);
+  });
+
+  it("Should fail to deposit 20 ETH", async function () {
+    await expect(
+      this.safuuXETH.depositETH({
+        value: ethers.utils.parseEther("20")
+      })
+    ).to.be.revertedWith("depositETH: Sacrifice not active");
+  });
+
   it("Should set Sacrifice and Bonus active", async function () {
     expect(await this.safuuXETH.isSacrificeActive()).to.equal(false);
     const saleStatus = await this.safuuXETH.setSacrificeStatus(true);
@@ -44,14 +60,6 @@ describe("Deploy Tokens", function () {
     expect(await this.safuuXETH.isBonusActive()).to.equal(false);
     await this.safuuXETH.activateBonus();
     expect(await this.safuuXETH.isBonusActive()).to.equal(true);
-  });
-
-  it("Should set Allowed Tokens", async function () {
-    await this.safuuXETH.setAllowedTokens("USDC", this.usdcToken.address);
-    expect(await this.safuuXETH.AllowedTokens("USDC")).to.equal(this.usdcToken.address);
-
-    await this.safuuXETH.setAllowedTokens("USDT", this.usdtToken.address);
-    expect(await this.safuuXETH.AllowedTokens("USDT")).to.equal(this.usdtToken.address);
   });
 
   it("Should deposit 20 ETH", async function() {

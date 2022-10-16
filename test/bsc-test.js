@@ -55,17 +55,7 @@ describe("Deploy Tokens", function () {
 
     expect(await this.wbtcToken.name()).to.equal("WBTC");
     expect(await this.wbtcToken.symbol()).to.equal("WBTC");
-  });
-
-  it("Should set Sacrifice and Bonus active", async function () {
-    expect(await this.safuuXBSC.isSacrificeActive()).to.equal(false);
-    const saleStatus = await this.safuuXBSC.setSacrificeStatus(true);
-    expect(await this.safuuXBSC.isSacrificeActive()).to.equal(true);
-
-    expect(await this.safuuXBSC.isBonusActive()).to.equal(false);
-    await this.safuuXBSC.activateBonus();
-    expect(await this.safuuXBSC.isBonusActive()).to.equal(true);
-  });
+  });  
 
   it("Should set Allowed Tokens", async function () {
     await this.safuuXBSC.setAllowedTokens("SAFUU", this.safuuToken.address);
@@ -82,6 +72,24 @@ describe("Deploy Tokens", function () {
 
     await this.safuuXBSC.setAllowedTokens("WBTC", this.wbtcToken.address);
     expect(await this.safuuXBSC.AllowedTokens("WBTC")).to.equal(this.wbtcToken.address);
+  });
+
+  it("Should fail to deposit 20 BNB", async function () {
+    await expect(
+      this.safuuXBSC.depositBNB({
+        value: ethers.utils.parseEther("20")
+      })
+    ).to.be.revertedWith("depositBNB: Sacrifice not active");
+  });
+
+  it("Should set Sacrifice and Bonus active", async function () {
+    expect(await this.safuuXBSC.isSacrificeActive()).to.equal(false);
+    const saleStatus = await this.safuuXBSC.setSacrificeStatus(true);
+    expect(await this.safuuXBSC.isSacrificeActive()).to.equal(true);
+
+    expect(await this.safuuXBSC.isBonusActive()).to.equal(false);
+    await this.safuuXBSC.activateBonus();
+    expect(await this.safuuXBSC.isBonusActive()).to.equal(true);
   });
 
   it("Should deposit 20 BNB", async function() {

@@ -11,7 +11,8 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
-    Counters.Counter private nextSacrificeId;
+    Counters.Counter public nextSacrificeId;
+    Counters.Counter public nextBTCIndex;
 
     address payable private safuuWallet;
     address payable private serviceWallet;
@@ -32,8 +33,9 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
 
     mapping(uint256 => sacrifice) public Sacrifice;
     mapping(string => address) public AllowedTokens;
-    mapping(uint256 => string) public sacrificeStatus;
-    mapping(uint256 => uint256) public bonusPercentage;
+    mapping(string => address) public ChainlinkContracts;
+    mapping(uint256 => string) public SacrificeStatus;
+    mapping(uint256 => uint256) public BonusPercentage;
     mapping(address => uint256) public BNBDeposit;
     mapping(address => mapping(address => uint256)) public BEP20Deposit;
 
@@ -48,11 +50,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
     constructor(address payable _safuuWallet, address payable _serviceWallet) {
         safuuWallet = _safuuWallet;
         serviceWallet = _serviceWallet;
-        isSacrificeActive = false;
-        isBonusActive = false;
-        sacrificeStatus[1] = "pending";
-        sacrificeStatus[2] = "completed";
-        sacrificeStatus[3] = "cancelled";
+        _init();
     }
 
     function depositBNB() external payable nonReentrant {
@@ -60,7 +58,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         require(msg.value > 0, "depositBNB: Amount must be greater than ZERO");
 
         BNBDeposit[msg.sender] += msg.value;
-        uint256 priceFeed = getChainLinkPrice(AllowedTokens["BNB"]);
+        uint256 priceFeed = getChainLinkPrice(ChainlinkContracts["BNB"]);
         uint256 tokenPriceUSD = priceFeed / 1e8;
         nextSacrificeId.increment();
         _createNewSacrifice(
@@ -70,7 +68,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
-            sacrificeStatus[2]
+            SacrificeStatus[2]
         );
 
         uint256 safuuSplit = (msg.value * 998) / 1000;
@@ -100,7 +98,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         require(_amount > 0, "depositBEP20: Amount must be greater than ZERO");
 
         uint256 amount = _amount * 1e18;
-        uint256 priceFeed = getChainLinkPrice(AllowedTokens[_symbol]);
+        uint256 priceFeed = getChainLinkPrice(ChainlinkContracts[_symbol]);
         uint256 tokenPriceUSD = priceFeed / 1e8;
         address tokenAddress = AllowedTokens[_symbol];
         BEP20Deposit[msg.sender][tokenAddress] += amount;
@@ -113,7 +111,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
-            sacrificeStatus[2]
+            SacrificeStatus[2]
         );
 
         uint256 safuuSplit = (amount * 998) / 1000;
@@ -138,7 +136,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         require(_amount > 0, "depositSafuu: Amount must be greater than ZERO");
         uint256 amount = _amount * 1e5;
         uint256 tokenPriceUSD = 0;
-        //uint256 tokenPriceUSD = getChainLinkPrice(AllowedTokens["SAFUU"]);
+        //uint256 tokenPriceUSD = getChainLinkPrice(ChainlinkContracts["SAFUU"]);
         address tokenAddress = AllowedTokens["SAFUU"];
         BEP20Deposit[msg.sender][tokenAddress] += amount;
 
@@ -150,7 +148,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
-            sacrificeStatus[2]
+            SacrificeStatus[2]
         );
 
         IERC20 token = IERC20(tokenAddress);
@@ -188,15 +186,22 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         sacrifice storage updateSacrifice = Sacrifice[sacrificeId];
         //require(condition); // CHECK SACRIFICE EXIST
         updateSacrifice.txHash = _txHash;
-        updateSacrifice.bonus = bonusPercentage[_bonus];
-        updateSacrifice.status = sacrificeStatus[_status];
+        updateSacrifice.bonus = BonusPercentage[_bonus];
+        updateSacrifice.status = SacrificeStatus[_status];
     }
 
     function setAllowedTokens(string memory _symbol, address _tokenAddress)
-        external
+        public
         onlyOwner
     {
         AllowedTokens[_symbol] = _tokenAddress;
+    }
+
+    function setChainlink(string memory _symbol, address _tokenAddress)
+        public
+        onlyOwner
+    {
+        ChainlinkContracts[_symbol] = _tokenAddress;
     }
 
     function setSacrificeStatus(bool _isActive) external onlyOwner {
@@ -212,6 +217,10 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         onlyOwner
     {
         serviceWallet = _serviceWallet;
+    }
+
+    function updateBonus(uint256 _day, uint256 _percentage) external onlyOwner {
+        BonusPercentage[_day] = _percentage;
     }
 
     function recoverBNB() external onlyOwner {
@@ -253,8 +262,26 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
     //     return uint256(price);
     // }
 
-    function updateBonus(uint256 _day, uint256 _percentage) external onlyOwner {
-        bonusPercentage[_day] = _percentage;
+    function _init() internal {
+        isSacrificeActive = false;
+        isBonusActive = false;
+
+        SacrificeStatus[1] = "pending";
+        SacrificeStatus[2] = "completed";
+        SacrificeStatus[3] = "cancelled";
+
+        // ****** Mainnet Data ******
+        // setAllowedTokens("ETH", 0x2170Ed0880ac9A755fd29B2688956BD959F933F8);
+        // setAllowedTokens("BUSD", 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
+        // setAllowedTokens("USDC", 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
+        // setAllowedTokens("USDT", 0x55d398326f99059fF775485246999027B3197955);
+        // setAllowedTokens("SAFUU", 0xE5bA47fD94CB645ba4119222e34fB33F59C7CD90);
+
+        // setChainlink("BNB", 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE);
+        // setChainlink("ETH", 0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
+        // setChainlink("BUSD", 0xcBb98864Ef56E9042e7d2efef76141f15731B82f);
+        // setChainlink("USDC", 0x51597f405303C4377E36123cBc172b13269EA163);
+        // setChainlink("USDT", 0xB97Ad0E74fa7d920791E90258A6E2085088b4320);
     }
 
     function activateBonus() external onlyOwner {
@@ -264,37 +291,37 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         );
 
         isBonusActive = true;
-        bonusPercentage[1] = 5000; // 5000 equals 50%
-        bonusPercentage[2] = 4500;
-        bonusPercentage[3] = 4000;
-        bonusPercentage[4] = 3500;
-        bonusPercentage[5] = 3000;
-        bonusPercentage[6] = 2500;
-        bonusPercentage[7] = 2000;
-        bonusPercentage[8] = 1500;
-        bonusPercentage[9] = 1400;
-        bonusPercentage[10] = 1300;
-        bonusPercentage[11] = 1200;
-        bonusPercentage[12] = 1100;
-        bonusPercentage[13] = 1000;
-        bonusPercentage[14] = 900;
-        bonusPercentage[15] = 800;
-        bonusPercentage[16] = 700;
-        bonusPercentage[17] = 600;
-        bonusPercentage[18] = 500;
-        bonusPercentage[19] = 400;
-        bonusPercentage[20] = 300;
-        bonusPercentage[21] = 200;
-        bonusPercentage[22] = 100;
-        bonusPercentage[23] = 90;
-        bonusPercentage[24] = 80;
-        bonusPercentage[25] = 70;
-        bonusPercentage[26] = 60;
-        bonusPercentage[27] = 50;
-        bonusPercentage[28] = 40;
-        bonusPercentage[29] = 30;
-        bonusPercentage[30] = 20;
-        bonusPercentage[31] = 10;
-        bonusPercentage[32] = 0;
+        BonusPercentage[1] = 5000; // 5000 equals 50%
+        BonusPercentage[2] = 4500;
+        BonusPercentage[3] = 4000;
+        BonusPercentage[4] = 3500;
+        BonusPercentage[5] = 3000;
+        BonusPercentage[6] = 2500;
+        BonusPercentage[7] = 2000;
+        BonusPercentage[8] = 1500;
+        BonusPercentage[9] = 1400;
+        BonusPercentage[10] = 1300;
+        BonusPercentage[11] = 1200;
+        BonusPercentage[12] = 1100;
+        BonusPercentage[13] = 1000;
+        BonusPercentage[14] = 900;
+        BonusPercentage[15] = 800;
+        BonusPercentage[16] = 700;
+        BonusPercentage[17] = 600;
+        BonusPercentage[18] = 500;
+        BonusPercentage[19] = 400;
+        BonusPercentage[20] = 300;
+        BonusPercentage[21] = 200;
+        BonusPercentage[22] = 100;
+        BonusPercentage[23] = 90;
+        BonusPercentage[24] = 80;
+        BonusPercentage[25] = 70;
+        BonusPercentage[26] = 60;
+        BonusPercentage[27] = 50;
+        BonusPercentage[28] = 40;
+        BonusPercentage[29] = 30;
+        BonusPercentage[30] = 20;
+        BonusPercentage[31] = 10;
+        BonusPercentage[32] = 0;
     }
 }
