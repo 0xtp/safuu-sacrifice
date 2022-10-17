@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
@@ -33,13 +32,15 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
     }
 
     mapping(uint256 => sacrifice) public Sacrifice;
+    mapping(address => uint256) public BTCPledge;
+    mapping(address => uint256) public BNBDeposit;
+    mapping(address => mapping(address => uint256)) public BEP20Deposit;
+    mapping(address => mapping(string => uint256[])) private AccountDeposits;
+
     mapping(string => address) public AllowedTokens;
     mapping(string => address) public ChainlinkContracts;
     mapping(uint256 => string) public SacrificeStatus;
     mapping(uint256 => uint256) public BonusPercentage;
-    mapping(address => uint256) public BTCPledge;
-    mapping(address => uint256) public BNBDeposit;
-    mapping(address => mapping(address => uint256)) public BEP20Deposit;
 
     event BTCPledged(address indexed accountAddress, uint256 amount);
     event BNBDeposited(address indexed accountAddress, uint256 amount);
@@ -60,10 +61,12 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         require(isSacrificeActive == true, "depositBNB: Sacrifice not active");
         require(msg.value > 0, "depositBNB: Amount must be greater than ZERO");
 
-        BNBDeposit[msg.sender] += msg.value;
+        nextSacrificeId.increment();
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts["BNB"]);
         uint256 tokenPriceUSD = priceFeed / 1e8;
-        nextSacrificeId.increment();
+        BNBDeposit[msg.sender] += msg.value;
+        AccountDeposits[msg.sender]["BNB"].push(nextSacrificeId.current());
+
         _createNewSacrifice(
             "BNB",
             msg.sender,
@@ -71,7 +74,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
-            nextBTCIndex.current(),
+            0,
             SacrificeStatus[2]
         );
 
@@ -101,13 +104,14 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         );
         require(_amount > 0, "depositBEP20: Amount must be greater than ZERO");
 
+        nextSacrificeId.increment();
         uint256 amount = _amount * 1e18;
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts[_symbol]);
         uint256 tokenPriceUSD = priceFeed / 1e8;
         address tokenAddress = AllowedTokens[_symbol];
         BEP20Deposit[msg.sender][tokenAddress] += amount;
+        AccountDeposits[msg.sender][_symbol].push(nextSacrificeId.current());
 
-        nextSacrificeId.increment();
         _createNewSacrifice(
             _symbol,
             msg.sender,
@@ -115,7 +119,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
-            nextBTCIndex.current(),
+            0,
             SacrificeStatus[2]
         );
 
@@ -139,13 +143,15 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             "depositSafuu: Address not part of allowed token list"
         );
         require(_amount > 0, "depositSafuu: Amount must be greater than ZERO");
+
+        nextSacrificeId.increment();
         uint256 amount = _amount * 1e5;
         uint256 tokenPriceUSD = 0;
         //uint256 tokenPriceUSD = getChainLinkPrice(ChainlinkContracts["SAFUU"]);
         address tokenAddress = AllowedTokens["SAFUU"];
         BEP20Deposit[msg.sender][tokenAddress] += amount;
+        AccountDeposits[msg.sender]["SAFUU"].push(nextSacrificeId.current());
 
-        nextSacrificeId.increment();
         _createNewSacrifice(
             "SAFUU",
             msg.sender,
@@ -153,7 +159,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
-            nextBTCIndex.current(),
+            0,
             SacrificeStatus[2]
         );
 
@@ -171,12 +177,13 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         require(isSacrificeActive == true, "pledgeBTC: Sacrifice not active");
         require(_amount > 0, "pledgeBTC: Amount must be greater than ZERO");
 
+        nextBTCIndex.increment();
+        nextSacrificeId.increment();
         BTCPledge[msg.sender] += _amount;
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts["BTC"]);
         uint256 tokenPriceUSD = priceFeed / 1e8;
+        AccountDeposits[msg.sender]["BTC"].push(nextSacrificeId.current());
 
-        nextBTCIndex.increment();
-        nextSacrificeId.increment();
         _createNewSacrifice(
             "BTC",
             msg.sender,
@@ -270,6 +277,18 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
 
     function getCurrentSacrificeID() external view returns (uint256) {
         return nextSacrificeId.current();
+    }
+
+    function getCurrentBTCIndex() external view returns (uint256) {
+        return nextBTCIndex.current();
+    }
+
+    function getAccountDeposits(address _account, string memory _symbol)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return AccountDeposits[_account][_symbol];
     }
 
     function getChainLinkPrice(address contractAddress)

@@ -32,13 +32,15 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
     }
 
     mapping(uint256 => sacrifice) public Sacrifice;
+    mapping(address => uint256) public BTCPledge;
+    mapping(address => uint256) public ETHDeposit;
+    mapping(address => mapping(address => uint256)) public ERC20Deposit;
+    mapping(address => mapping(string => uint256[])) private AccountDeposits;
+
     mapping(string => address) public AllowedTokens;
     mapping(string => address) public ChainlinkContracts;
     mapping(uint256 => string) public SacrificeStatus;
     mapping(uint256 => uint256) public BonusPercentage;
-    mapping(address => uint256) public BTCPledge;
-    mapping(address => uint256) public ETHDeposit;
-    mapping(address => mapping(address => uint256)) public ERC20Deposit;
 
     event BTCPledged(address indexed accountAddress, uint256 amount);
     event ETHDeposited(address indexed accountAddress, uint256 amount);
@@ -58,10 +60,12 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         require(isSacrificeActive == true, "depositETH: Sacrifice not active");
         require(msg.value > 0, "depositETH: Amount must be greater than ZERO");
 
-        ETHDeposit[msg.sender] += msg.value;
+        nextSacrificeId.increment();
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts["ETH"]);
         uint256 tokenPriceUSD = priceFeed / 1e8;
-        nextSacrificeId.increment();
+        ETHDeposit[msg.sender] += msg.value;
+        AccountDeposits[msg.sender]["ETH"].push(nextSacrificeId.current());
+
         _createNewSacrifice(
             "ETH",
             msg.sender,
@@ -69,7 +73,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             tokenPriceUSD,
             block.timestamp,
             0, //Replaced with real data
-            nextBTCIndex.current(),
+            0,
             SacrificeStatus[2]
         );
 
@@ -95,13 +99,14 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         );
         require(_amount > 0, "depositERC20: Amount must be greater than ZERO");
 
+        nextSacrificeId.increment();
         uint256 amount = _amount * 1e18;
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts[_symbol]);
         uint256 tokenPriceUSD = priceFeed / 1e8;
         address tokenAddress = AllowedTokens[_symbol];
         ERC20Deposit[msg.sender][tokenAddress] += amount;
+        AccountDeposits[msg.sender][_symbol].push(nextSacrificeId.current());
 
-        nextSacrificeId.increment();
         _createNewSacrifice(
             _symbol,
             msg.sender,
@@ -109,7 +114,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             tokenPriceUSD,
             block.timestamp,
             0, //Replaced with real data
-            nextBTCIndex.current(),
+            0,
             SacrificeStatus[2]
         );
 
@@ -131,12 +136,13 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         require(isSacrificeActive == true, "pledgeBTC: Sacrifice not active");
         require(_amount > 0, "pledgeBTC: Amount must be greater than ZERO");
 
+        nextBTCIndex.increment();
+        nextSacrificeId.increment();
         BTCPledge[msg.sender] += _amount;
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts["BTC"]);
         uint256 tokenPriceUSD = priceFeed / 1e8;
+        AccountDeposits[msg.sender]["BTC"].push(nextSacrificeId.current());
 
-        nextBTCIndex.increment();
-        nextSacrificeId.increment();
         _createNewSacrifice(
             "BTC",
             msg.sender,
@@ -159,7 +165,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         uint256 _priceUSD,
         uint256 _timestamp,
         uint256 _bonus,
-        uint256 btcIndex,
+        uint256 _btcIndex,
         string memory _status
     ) internal {
         sacrifice storage newSacrifice = Sacrifice[nextSacrificeId.current()];
@@ -170,6 +176,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         newSacrifice.tokenPriceUSD = _priceUSD;
         newSacrifice.timestamp = _timestamp;
         newSacrifice.bonus = _bonus;
+        newSacrifice.btcIndex = _btcIndex;
         newSacrifice.status = _status;
     }
 
@@ -225,6 +232,22 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
 
     function recoverERC20(IERC20 tokenContract, address to) external onlyOwner {
         tokenContract.transfer(to, tokenContract.balanceOf(address(this)));
+    }
+
+    function getCurrentSacrificeID() external view returns (uint256) {
+        return nextSacrificeId.current();
+    }
+
+    function getCurrentBTCIndex() external view returns (uint256) {
+        return nextBTCIndex.current();
+    }
+
+    function getAccountDeposits(address _account, string memory _symbol)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return AccountDeposits[_account][_symbol];
     }
 
     function getChainLinkPrice(address contractAddress)
