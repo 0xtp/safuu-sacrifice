@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
@@ -13,10 +12,12 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
     Counters.Counter public nextSacrificeId;
     Counters.Counter public nextBTCIndex;
 
-    address payable private safuuWallet;
-    address payable private serviceWallet;
+    address payable public safuuWallet;
+    address payable public serviceWallet;
     bool public isSacrificeActive;
     bool public isBonusActive;
+    uint256 public bonusStart;
+    uint256 public safuuBonus;
 
     struct sacrifice {
         uint256 id;
@@ -71,9 +72,9 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             "BNB",
             msg.sender,
             msg.value,
-            tokenPriceUSD, //Replaced with ChainLink price feed
+            tokenPriceUSD,
             block.timestamp,
-            0, //Replaced with real data
+            getBonus(), //Replaced with real data
             0,
             SacrificeStatus[2]
         );
@@ -118,7 +119,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             amount,
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
-            0, //Replaced with real data
+            getBonus(), //Replaced with real data
             0,
             SacrificeStatus[2]
         );
@@ -145,6 +146,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         require(_amount > 0, "depositSafuu: Amount must be greater than ZERO");
 
         nextSacrificeId.increment();
+        uint256 bonus = safuuBonus + getBonus();
         uint256 amount = _amount * 1e5;
         uint256 tokenPriceUSD = 0;
         //uint256 tokenPriceUSD = getChainLinkPrice(ChainlinkContracts["SAFUU"]);
@@ -158,7 +160,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             amount,
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
-            0, //Replaced with real data
+            bonus, //Replaced with real data
             0,
             SacrificeStatus[2]
         );
@@ -190,7 +192,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             _amount,
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
-            0, //Replaced with real data
+            getBonus(), //Replaced with real data
             nextBTCIndex.current(),
             SacrificeStatus[1]
         );
@@ -326,6 +328,20 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         SacrificeStatus[2] = "completed";
         SacrificeStatus[3] = "cancelled";
 
+        // ****** Testnet Data ******
+        // setAllowedTokens("ETH", 0x2170Ed0880ac9A755fd29B2688956BD959F933F8);
+        // setAllowedTokens("BUSD", 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
+        // setAllowedTokens("USDC", 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
+        // setAllowedTokens("USDT", 0x55d398326f99059fF775485246999027B3197955);
+        // setAllowedTokens("SAFUU", 0xE5bA47fD94CB645ba4119222e34fB33F59C7CD90);
+
+        // setChainlink("BNB", 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE);
+        // setChainlink("ETH", 0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
+        // setChainlink("BTC", 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
+        // setChainlink("BUSD", 0xcBb98864Ef56E9042e7d2efef76141f15731B82f);
+        // setChainlink("USDC", 0x51597f405303C4377E36123cBc172b13269EA163);
+        // setChainlink("USDT", 0xB97Ad0E74fa7d920791E90258A6E2085088b4320);
+
         // ****** Mainnet Data ******
         // setAllowedTokens("ETH", 0x2170Ed0880ac9A755fd29B2688956BD959F933F8);
         // setAllowedTokens("BUSD", 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
@@ -348,6 +364,8 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         );
 
         isBonusActive = true;
+        bonusStart = block.timestamp;
+        safuuBonus = 2400;
         BonusPercentage[1] = 5000; // 5000 equals 50%
         BonusPercentage[2] = 4500;
         BonusPercentage[3] = 4000;
@@ -380,5 +398,11 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         BonusPercentage[30] = 20;
         BonusPercentage[31] = 10;
         BonusPercentage[32] = 0;
+    }
+
+    function getBonus() public view returns (uint256) {
+        uint256 noOfDays = (block.timestamp - bonusStart) / 86400 + 1;
+        uint256 bonus = BonusPercentage[noOfDays];
+        return bonus;
     }
 }

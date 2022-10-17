@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/finance/PaymentSplitter.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
@@ -13,10 +12,11 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
     Counters.Counter public nextSacrificeId;
     Counters.Counter public nextBTCIndex;
 
-    address payable private safuuWallet;
-    address payable private serviceWallet;
+    address payable public safuuWallet;
+    address payable public serviceWallet;
     bool public isSacrificeActive;
     bool public isBonusActive;
+    uint256 public bonusStart;
 
     struct sacrifice {
         uint256 id;
@@ -72,7 +72,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             msg.value,
             tokenPriceUSD,
             block.timestamp,
-            0, //Replaced with real data
+            getBonus(),
             0,
             SacrificeStatus[2]
         );
@@ -113,7 +113,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             amount,
             tokenPriceUSD,
             block.timestamp,
-            0, //Replaced with real data
+            getBonus(),
             0,
             SacrificeStatus[2]
         );
@@ -149,7 +149,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             _amount,
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
-            0, //Replaced with real data
+            getBonus(),
             nextBTCIndex.current(),
             SacrificeStatus[1]
         );
@@ -285,6 +285,17 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         SacrificeStatus[2] = "completed";
         SacrificeStatus[3] = "cancelled";
 
+        // ****** Testnet Data ******
+        // setAllowedTokens("BUSD", 0x4Fabb145d64652a948d72533023f6E7A623C7C53);
+        // setAllowedTokens("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48);
+        // setAllowedTokens("USDT", 0xdac17f958d2ee523a2206206994597c13d831ec7);
+
+        // setChainlink("ETH", 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
+        // setChainlink("BTC", 0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
+        // setChainlink("BUSD", 0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A);
+        // setChainlink("USDC", 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6);
+        // setChainlink("USDT", 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D);
+
         // ****** Mainnet Data ******
         // setAllowedTokens("BUSD", 0x4Fabb145d64652a948d72533023f6E7A623C7C53);
         // setAllowedTokens("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48);
@@ -304,6 +315,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         );
 
         isBonusActive = true;
+        bonusStart = block.timestamp;
         BonusPercentage[1] = 5000; // 5000 equals 50%
         BonusPercentage[2] = 4500;
         BonusPercentage[3] = 4000;
@@ -336,5 +348,11 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         BonusPercentage[30] = 20;
         BonusPercentage[31] = 10;
         BonusPercentage[32] = 0;
+    }
+
+    function getBonus() public view returns (uint256) {
+        uint256 noOfDays = (block.timestamp - bonusStart) / 86400 + 1;
+        uint256 bonus = BonusPercentage[noOfDays];
+        return bonus;
     }
 }
