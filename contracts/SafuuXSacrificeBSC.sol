@@ -28,6 +28,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         uint256 tokenPriceUSD;
         uint256 timestamp;
         uint256 bonus;
+        uint256 btcIndex;
         string status;
     }
 
@@ -70,6 +71,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
+            nextBTCIndex.current(),
             SacrificeStatus[2]
         );
 
@@ -113,6 +115,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
+            nextBTCIndex.current(),
             SacrificeStatus[2]
         );
 
@@ -150,6 +153,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
+            nextBTCIndex.current(),
             SacrificeStatus[2]
         );
 
@@ -180,6 +184,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
+            nextBTCIndex.current(),
             SacrificeStatus[1]
         );
 
@@ -194,6 +199,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         uint256 _priceUSD,
         uint256 _timestamp,
         uint256 _bonus,
+        uint256 _btcIndex,
         string memory _status
     ) internal {
         sacrifice storage newSacrifice = Sacrifice[nextSacrificeId.current()];
@@ -204,6 +210,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         newSacrifice.tokenPriceUSD = _priceUSD;
         newSacrifice.timestamp = _timestamp;
         newSacrifice.bonus = _bonus;
+        newSacrifice.btcIndex = _btcIndex;
         newSacrifice.status = _status;
     }
 

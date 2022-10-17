@@ -27,6 +27,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         uint256 tokenPriceUSD;
         uint256 timestamp;
         uint256 bonus;
+        uint256 btcIndex;
         string status;
     }
 
@@ -68,6 +69,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             tokenPriceUSD,
             block.timestamp,
             0, //Replaced with real data
+            nextBTCIndex.current(),
             SacrificeStatus[2]
         );
 
@@ -107,6 +109,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             tokenPriceUSD,
             block.timestamp,
             0, //Replaced with real data
+            nextBTCIndex.current(),
             SacrificeStatus[2]
         );
 
@@ -141,6 +144,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
             tokenPriceUSD, //Replaced with ChainLink price feed
             block.timestamp,
             0, //Replaced with real data
+            nextBTCIndex.current(),
             SacrificeStatus[1]
         );
 
@@ -155,6 +159,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         uint256 _priceUSD,
         uint256 _timestamp,
         uint256 _bonus,
+        uint256 btcIndex,
         string memory _status
     ) internal {
         sacrifice storage newSacrifice = Sacrifice[nextSacrificeId.current()];
