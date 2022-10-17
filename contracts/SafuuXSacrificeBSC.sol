@@ -36,9 +36,11 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
     mapping(string => address) public ChainlinkContracts;
     mapping(uint256 => string) public SacrificeStatus;
     mapping(uint256 => uint256) public BonusPercentage;
+    mapping(address => uint256) public BTCPledge;
     mapping(address => uint256) public BNBDeposit;
     mapping(address => mapping(address => uint256)) public BEP20Deposit;
 
+    event BTCPledged(address indexed accountAddress, uint256 amount);
     event BNBDeposited(address indexed accountAddress, uint256 amount);
     event SAFUUDeposited(address indexed accountAddress, uint256 amount);
     event BEP20Deposited(
@@ -155,6 +157,34 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         token.transferFrom(msg.sender, safuuWallet, amount);
 
         emit SAFUUDeposited(msg.sender, amount);
+    }
+
+    function pledgeBTC(uint256 _amount)
+        external
+        nonReentrant
+        returns (uint256)
+    {
+        require(isSacrificeActive == true, "pledgeBTC: Sacrifice not active");
+        require(_amount > 0, "pledgeBTC: Amount must be greater than ZERO");
+
+        BTCPledge[msg.sender] += _amount;
+        uint256 priceFeed = getChainLinkPrice(ChainlinkContracts["BTC"]);
+        uint256 tokenPriceUSD = priceFeed / 1e8;
+
+        nextBTCIndex.increment();
+        nextSacrificeId.increment();
+        _createNewSacrifice(
+            "BTC",
+            msg.sender,
+            _amount,
+            tokenPriceUSD, //Replaced with ChainLink price feed
+            block.timestamp,
+            0, //Replaced with real data
+            SacrificeStatus[1]
+        );
+
+        emit BTCPledged(msg.sender, _amount);
+        return nextBTCIndex.current();
     }
 
     function _createNewSacrifice(
@@ -279,6 +309,7 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
 
         // setChainlink("BNB", 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE);
         // setChainlink("ETH", 0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
+        // setChainlink("BTC", 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
         // setChainlink("BUSD", 0xcBb98864Ef56E9042e7d2efef76141f15731B82f);
         // setChainlink("USDC", 0x51597f405303C4377E36123cBc172b13269EA163);
         // setChainlink("USDT", 0xB97Ad0E74fa7d920791E90258A6E2085088b4320);
