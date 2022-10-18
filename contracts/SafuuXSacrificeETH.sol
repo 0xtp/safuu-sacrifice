@@ -277,6 +277,19 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
     //     return uint256(price);
     // }
 
+    function getPriceBySymbol(string memory _symbol)
+        public
+        view
+        returns (uint256)
+    {
+        require(
+            ChainlinkContracts[_symbol] != address(0),
+            "getChainLinkPrice: Address not part of Chainlink token list"
+        );
+
+        return getChainLinkPrice(ChainlinkContracts[_symbol]);
+    }
+
     function _init() internal {
         isSacrificeActive = false;
         isBonusActive = false;
