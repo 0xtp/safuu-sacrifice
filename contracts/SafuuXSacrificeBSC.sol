@@ -293,32 +293,45 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         return AccountDeposits[_account][_symbol];
     }
 
-    function getChainLinkPrice(address contractAddress)
-        public
-        view
-        returns (uint256)
-    {
-        return 100000000000;
-    }
-
     // function getChainLinkPrice(address contractAddress)
     //     public
     //     view
     //     returns (uint256)
     // {
-    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(
-    //         contractAddress
-    //     );
-    //     (
-    //         ,
-    //         /*uint80 roundID*/
-    //         int256 price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
-    //         ,
-    //         ,
-
-    //     ) = priceFeed.latestRoundData();
-    //     return uint256(price);
+    //     return 100000000000;
     // }
+
+    function getChainLinkPrice(address contractAddress)
+        public
+        view
+        returns (uint256)
+    {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(
+            contractAddress
+        );
+        (
+            ,
+            /*uint80 roundID*/
+            int256 price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+            ,
+            ,
+
+        ) = priceFeed.latestRoundData();
+        return uint256(price);
+    }
+
+    function getPriceBySymbol(string memory _symbol)
+        public
+        view
+        returns (uint256)
+    {
+        require(
+            ChainlinkContracts[_symbol] != address(0),
+            "getChainLinkPrice: Address not part of Chainlink token list"
+        );
+
+        return getChainLinkPrice(ChainlinkContracts[_symbol]);
+    }
 
     function _init() internal {
         isSacrificeActive = false;
@@ -329,28 +342,24 @@ contract SafuuXSacrificeBSC is Ownable, ReentrancyGuard {
         SacrificeStatus[3] = "cancelled";
 
         // ****** Testnet Data ******
-        // setAllowedTokens("ETH", 0x2170Ed0880ac9A755fd29B2688956BD959F933F8);
-        // setAllowedTokens("BUSD", 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
-        // setAllowedTokens("USDC", 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
-        // setAllowedTokens("USDT", 0x55d398326f99059fF775485246999027B3197955);
-        // setAllowedTokens("SAFUU", 0xE5bA47fD94CB645ba4119222e34fB33F59C7CD90);
+        setAllowedTokens("BUSD", 0x3A820b2DD4b900904cf97f4c86fa7Ef0cEb9A1b0);
+        setAllowedTokens("USDC", 0xdb8BcB4051c68FA6081c9EB5c84cA0c810d35506);
+        setAllowedTokens("USDT", 0xe4d3C1492993fb9A01119cd23122A3B8E1A725A4);
+        setAllowedTokens("SAFUU", 0x88B263D58542281C79106fD9Ab201DcE7B0BB399);
 
-        // setChainlink("BNB", 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE);
-        // setChainlink("ETH", 0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
-        // setChainlink("BTC", 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
-        // setChainlink("BUSD", 0xcBb98864Ef56E9042e7d2efef76141f15731B82f);
-        // setChainlink("USDC", 0x51597f405303C4377E36123cBc172b13269EA163);
-        // setChainlink("USDT", 0xB97Ad0E74fa7d920791E90258A6E2085088b4320);
+        setChainlink("BNB", 0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526);
+        setChainlink("BTC", 0x5741306c21795FdCBb9b265Ea0255F499DFe515C);
+        setChainlink("BUSD", 0x9331b55D9830EF609A2aBCfAc0FBCE050A52fdEa);
+        setChainlink("USDC", 0x90c069C4538adAc136E051052E14c1cD799C41B7);
+        setChainlink("USDT", 0xEca2605f0BCF2BA5966372C99837b1F182d3D620);
 
         // ****** Mainnet Data ******
-        // setAllowedTokens("ETH", 0x2170Ed0880ac9A755fd29B2688956BD959F933F8);
         // setAllowedTokens("BUSD", 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);
         // setAllowedTokens("USDC", 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d);
         // setAllowedTokens("USDT", 0x55d398326f99059fF775485246999027B3197955);
         // setAllowedTokens("SAFUU", 0xE5bA47fD94CB645ba4119222e34fB33F59C7CD90);
 
         // setChainlink("BNB", 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE);
-        // setChainlink("ETH", 0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e);
         // setChainlink("BTC", 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
         // setChainlink("BUSD", 0xcBb98864Ef56E9042e7d2efef76141f15731B82f);
         // setChainlink("USDC", 0x51597f405303C4377E36123cBc172b13269EA163);

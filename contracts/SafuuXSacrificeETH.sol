@@ -286,15 +286,15 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         SacrificeStatus[3] = "cancelled";
 
         // ****** Testnet Data ******
-        // setAllowedTokens("BUSD", 0x4Fabb145d64652a948d72533023f6E7A623C7C53);
-        // setAllowedTokens("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48);
-        // setAllowedTokens("USDT", 0xdac17f958d2ee523a2206206994597c13d831ec7);
+        // setAllowedTokens("BUSD", 0xa8052394650628b50d3A6a059Ed13324401AF0b0);
+        // setAllowedTokens("USDC", 0x90ecE564EDc406bc4Da1D8852a3Ce77b1f955dA0);
+        // setAllowedTokens("USDT", 0xE5e80852F19684e6dfDA126ECbB0354BEF138404);
 
-        // setChainlink("ETH", 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
-        // setChainlink("BTC", 0x264990fbd0A4796A3E3d8E37C4d5F87a3aCa5Ebf);
-        // setChainlink("BUSD", 0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A);
-        // setChainlink("USDC", 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6);
-        // setChainlink("USDT", 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D);
+        // setChainlink("ETH", 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
+        // setChainlink("BTC", 0xA39434A63A52E749F02807ae27335515BA4b07F7);
+        // setChainlink("BUSD", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
+        // setChainlink("USDC", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
+        // setChainlink("USDT", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
 
         // ****** Mainnet Data ******
         // setAllowedTokens("BUSD", 0x4Fabb145d64652a948d72533023f6E7A623C7C53);
