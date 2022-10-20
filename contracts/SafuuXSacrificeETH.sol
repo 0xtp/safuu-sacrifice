@@ -17,6 +17,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
     bool public isSacrificeActive;
     bool public isBonusActive;
     uint256 public bonusStart;
+    uint256 public totalSacrifice;
 
     struct sacrifice {
         uint256 id;
@@ -62,15 +63,17 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
 
         nextSacrificeId.increment();
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts["ETH"]);
-        uint256 tokenPriceUSD = priceFeed / 1e8;
         ETHDeposit[msg.sender] += msg.value;
         AccountDeposits[msg.sender]["ETH"].push(nextSacrificeId.current());
+
+        uint256 tokenPriceUSD = priceFeed / 1e4;
+        totalSacrifice += tokenPriceUSD * (msg.value / 1e12);
 
         _createNewSacrifice(
             "ETH",
             msg.sender,
             msg.value,
-            tokenPriceUSD,
+            priceFeed,
             block.timestamp,
             getBonus(),
             0,
@@ -102,16 +105,18 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         nextSacrificeId.increment();
         uint256 amount = _amount * 1e18;
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts[_symbol]);
-        uint256 tokenPriceUSD = priceFeed / 1e8;
         address tokenAddress = AllowedTokens[_symbol];
         ERC20Deposit[msg.sender][tokenAddress] += amount;
         AccountDeposits[msg.sender][_symbol].push(nextSacrificeId.current());
+
+        uint256 tokenPriceUSD = priceFeed / 1e4;
+        totalSacrifice += tokenPriceUSD * (amount / 1e12);
 
         _createNewSacrifice(
             _symbol,
             msg.sender,
             amount,
-            tokenPriceUSD,
+            priceFeed,
             block.timestamp,
             getBonus(),
             0,
@@ -140,14 +145,16 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         nextSacrificeId.increment();
         BTCPledge[msg.sender] += _amount;
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts["BTC"]);
-        uint256 tokenPriceUSD = priceFeed / 1e8;
         AccountDeposits[msg.sender]["BTC"].push(nextSacrificeId.current());
+
+        uint256 tokenPriceUSD = priceFeed / 1e4;
+        totalSacrifice += tokenPriceUSD * (_amount * 1e4);
 
         _createNewSacrifice(
             "BTC",
             msg.sender,
             _amount,
-            tokenPriceUSD, //Replaced with ChainLink price feed
+            priceFeed,
             block.timestamp,
             getBonus(),
             nextBTCIndex.current(),
@@ -187,7 +194,6 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         uint256 _status
     ) external onlyOwner {
         sacrifice storage updateSacrifice = Sacrifice[sacrificeId];
-        //require(condition); // CHECK SACRIFICE EXIST
         updateSacrifice.txHash = _txHash;
         updateSacrifice.bonus = BonusPercentage[_bonus];
         updateSacrifice.status = SacrificeStatus[_status];
@@ -255,27 +261,19 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         view
         returns (uint256)
     {
-        return 100000000000;
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(
+            contractAddress
+        );
+        (
+            ,
+            /*uint80 roundID*/
+            int256 price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+            ,
+            ,
+
+        ) = priceFeed.latestRoundData();
+        return uint256(price);
     }
-
-    // function getChainLinkPrice(address contractAddress)
-    //     public
-    //     view
-    //     returns (uint256)
-    // {
-    //     AggregatorV3Interface priceFeed = AggregatorV3Interface(
-    //         contractAddress
-    //     );
-    //     (
-    //         ,
-    //         /*uint80 roundID*/
-    //         int256 price, /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
-    //         ,
-    //         ,
-
-    //     ) = priceFeed.latestRoundData();
-    //     return uint256(price);
-    // }
 
     function getPriceBySymbol(string memory _symbol)
         public
@@ -290,6 +288,12 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         return getChainLinkPrice(ChainlinkContracts[_symbol]);
     }
 
+    function getBonus() public view returns (uint256) {
+        uint256 noOfDays = (block.timestamp - bonusStart) / 86400 + 1;
+        uint256 bonus = BonusPercentage[noOfDays];
+        return bonus;
+    }
+
     function _init() internal {
         isSacrificeActive = false;
         isBonusActive = false;
@@ -299,15 +303,15 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         SacrificeStatus[3] = "cancelled";
 
         // ****** Testnet Data ******
-        // setAllowedTokens("BUSD", 0xa8052394650628b50d3A6a059Ed13324401AF0b0);
-        // setAllowedTokens("USDC", 0x90ecE564EDc406bc4Da1D8852a3Ce77b1f955dA0);
-        // setAllowedTokens("USDT", 0xE5e80852F19684e6dfDA126ECbB0354BEF138404);
+        setAllowedTokens("BUSD", 0xa8052394650628b50d3A6a059Ed13324401AF0b0);
+        setAllowedTokens("USDC", 0x90ecE564EDc406bc4Da1D8852a3Ce77b1f955dA0);
+        setAllowedTokens("USDT", 0xE5e80852F19684e6dfDA126ECbB0354BEF138404);
 
-        // setChainlink("ETH", 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
-        // setChainlink("BTC", 0xA39434A63A52E749F02807ae27335515BA4b07F7);
-        // setChainlink("BUSD", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
-        // setChainlink("USDC", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
-        // setChainlink("USDT", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
+        setChainlink("ETH", 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
+        setChainlink("BTC", 0xA39434A63A52E749F02807ae27335515BA4b07F7);
+        setChainlink("BUSD", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
+        setChainlink("USDC", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
+        setChainlink("USDT", 0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7);
 
         // ****** Mainnet Data ******
         // setAllowedTokens("BUSD", 0x4Fabb145d64652a948d72533023f6E7A623C7C53);
@@ -361,11 +365,5 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         BonusPercentage[30] = 20;
         BonusPercentage[31] = 10;
         BonusPercentage[32] = 0;
-    }
-
-    function getBonus() public view returns (uint256) {
-        uint256 noOfDays = (block.timestamp - bonusStart) / 86400 + 1;
-        uint256 bonus = BonusPercentage[noOfDays];
-        return bonus;
     }
 }
