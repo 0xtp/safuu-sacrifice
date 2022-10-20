@@ -213,7 +213,7 @@ contract SafuuXSacrificeETH is Ownable, ReentrancyGuard {
         ChainlinkContracts[_symbol] = _tokenAddress;
     }
 
-    function setSacrificeStatus(bool _isActive) external {
+    function setSacrificeStatus(bool _isActive) external onlyOwner {
         isSacrificeActive = _isActive;
     }
 
