@@ -49,12 +49,10 @@ contract SafuuXSacrificeWBTC is Ownable, ReentrancyGuard {
 
     function depositBTC(string memory _symbol, uint256 _amount)
         external
-        nonReentrant returns (uint256)
+        nonReentrant
+        returns (uint256)
     {
-        require(
-            isSacrificeActive == true,
-            "depositBTC: Sacrifice not active"
-        );
+        require(isSacrificeActive == true, "depositBTC: Sacrifice not active");
         require(
             AllowedTokens[_symbol] != address(0),
             "depositBTC: Address not part of allowed token list"
@@ -63,7 +61,8 @@ contract SafuuXSacrificeWBTC is Ownable, ReentrancyGuard {
 
         nextSacrificeId.increment();
 
-        uint256 amount = _amount * TokenDecimals[_symbol];
+        uint256 dec = TokenDecimals[_symbol] - 4;
+        uint256 amount = _amount * dec;
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts[_symbol]);
 
         address tokenAddress = AllowedTokens[_symbol];
@@ -71,7 +70,7 @@ contract SafuuXSacrificeWBTC is Ownable, ReentrancyGuard {
         AccountDeposits[msg.sender][_symbol].push(nextSacrificeId.current());
 
         uint256 tokenPriceUSD = priceFeed / 1e4;
-        totalSacrifice += tokenPriceUSD * (_amount * 1e4);
+        totalSacrifice += tokenPriceUSD * _amount;
 
         _createNewSacrifice(
             _symbol,
@@ -234,6 +233,5 @@ contract SafuuXSacrificeWBTC is Ownable, ReentrancyGuard {
         // setChainlink("BTC", 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
 
         setTokenDecimals("BTC", 1e8);
-
     }
 }
