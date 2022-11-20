@@ -11,8 +11,8 @@ contract SafuuXSacrificeBTCB is Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
     Counters.Counter public nextSacrificeId;
 
-    address payable public safuuWallet;
-    address payable public serviceWallet;
+    address public safuuWallet;
+    address public serviceWallet;
     bool public isSacrificeActive;
     uint256 public totalSacrifice;
 
@@ -27,6 +27,7 @@ contract SafuuXSacrificeBTCB is Ownable, ReentrancyGuard {
     }
 
     mapping(uint256 => sacrifice) public Sacrifice;
+    mapping(string => uint256) public totalSacrificeAmount;
     mapping(address => mapping(address => uint256)) public BTCDeposit;
     mapping(address => mapping(string => uint256[])) private AccountDeposits;
 
@@ -41,7 +42,7 @@ contract SafuuXSacrificeBTCB is Ownable, ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(address payable _safuuWallet, address payable _serviceWallet) {
+    constructor(address _safuuWallet, address _serviceWallet) {
         safuuWallet = _safuuWallet;
         serviceWallet = _serviceWallet;
         _init();
@@ -61,7 +62,7 @@ contract SafuuXSacrificeBTCB is Ownable, ReentrancyGuard {
 
         nextSacrificeId.increment();
 
-        uint256 dec = TokenDecimals[_symbol] - 4;
+        uint256 dec = TokenDecimals[_symbol] / 1e4;
         uint256 amount = _amount * dec;
         uint256 priceFeed = getChainLinkPrice(ChainlinkContracts[_symbol]);
 
@@ -71,6 +72,7 @@ contract SafuuXSacrificeBTCB is Ownable, ReentrancyGuard {
 
         uint256 tokenPriceUSD = priceFeed / 1e4;
         totalSacrifice += tokenPriceUSD * _amount;
+        totalSacrificeAmount[_symbol] += _amount;
 
         _createNewSacrifice(
             _symbol,
@@ -114,14 +116,12 @@ contract SafuuXSacrificeBTCB is Ownable, ReentrancyGuard {
     function updateSacrificeData(
         uint256 sacrificeId,
         uint256 _status,
-        string memory _symbol,
         address _account,
         uint256 _amount,
         uint256 _priceUSD,
         uint256 _timestamp
     ) external onlyOwner {
         sacrifice storage updateSacrifice = Sacrifice[sacrificeId];
-        updateSacrifice.tokenSymbol = _symbol;
         updateSacrifice.accountAddress = _account;
         updateSacrifice.tokenAmount = _amount;
         updateSacrifice.tokenPriceUSD = _priceUSD;
@@ -154,15 +154,16 @@ contract SafuuXSacrificeBTCB is Ownable, ReentrancyGuard {
         isSacrificeActive = _isActive;
     }
 
-    function setSafuuWallet(address payable _safuuWallet) external onlyOwner {
+    function setSafuuWallet(address _safuuWallet) external onlyOwner {
         safuuWallet = _safuuWallet;
     }
 
-    function setServiceWallet(address payable _serviceWallet)
-        external
-        onlyOwner
-    {
+    function setServiceWallet(address _serviceWallet) external onlyOwner {
         serviceWallet = _serviceWallet;
+    }
+
+    function setTotalSacrifice(uint256 _totalSacrificeUSD) external onlyOwner {
+        totalSacrifice = _totalSacrificeUSD;
     }
 
     function recoverBNB() external onlyOwner {
